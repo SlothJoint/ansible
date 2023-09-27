@@ -1,0 +1,60 @@
+---
+- name: Deploy Docker Compose and Docker Engine on ARM devices
+  hosts: your_target_hosts
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Install dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        update_cache: yes
+
+    - name: Add Docker repository key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+
+    - name: Add Docker repository for ARM architecture
+      apt_repository:
+        repo: deb [arch=armhf] https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Docker Compose
+      apt:
+        name: docker-compose
+        state: present
+
+    - name: Install Docker Engine
+      apt:
+        name: docker-ce
+        state: present
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    - name: Initialize Docker Swarm
+      command: docker swarm init
+      ignore_errors: yes
+      register: swarm_init_result
+      changed_when: "'This node joined a swarm' in swarm_init_result.stdout"
+
+    - name: Get Docker Swarm join token
+      command: docker swarm join-token worker
+      register: swarm_join_token
+
+    - name: Join other nodes to Docker Swarm
+      debug:
+        var: swarm_join_token.stdout_lines
+
+# Add more tasks here for deploying your application using Docker Compose.
